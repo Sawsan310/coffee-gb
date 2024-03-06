@@ -5,10 +5,10 @@ import eu.rekawek.coffeegb.controller.ButtonListener
 import eu.rekawek.coffeegb.debug.Console
 import eu.rekawek.coffeegb.memory.cart.Cartridge
 import eu.rekawek.coffeegb.memory.cart.Cartridge.GameboyType
+import eu.rekawek.coffeegb.serial.SerialEndpoint
 import eu.rekawek.coffeegb.swing.io.AudioSystemSoundOutput
 import eu.rekawek.coffeegb.swing.io.SwingController
 import eu.rekawek.coffeegb.swing.io.SwingDisplay
-import eu.rekawek.coffeegb.swing.io.serial.SerialEndpointWrapper
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -23,11 +23,11 @@ class SwingEmulator(
     private val display: SwingDisplay = SwingDisplay(1, false)
     private val controller: SwingController = SwingController(controllerProperties)
     private val sound: AudioSystemSoundOutput = AudioSystemSoundOutput()
-    private val serial: SerialEndpointWrapper = SerialEndpointWrapper()
+    private val serial: SerialEndpoint = SerialEndpoint.NULL_ENDPOINT
 
     val displayController = DisplayController(display)
     val soundController = SoundController(sound)
-    val serialController = SerialController(serial)
+    val serialController = ConnectionController()
 
     private val emulatorStateListeners: MutableList<EmulatorStateListener> = mutableListOf()
     private var gameboy: Gameboy? = null

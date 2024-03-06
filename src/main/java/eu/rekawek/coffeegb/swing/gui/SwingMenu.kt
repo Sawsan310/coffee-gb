@@ -6,6 +6,8 @@ import eu.rekawek.coffeegb.swing.emulator.SwingEmulator
 import eu.rekawek.coffeegb.swing.gui.properties.EmulatorProperties
 import eu.rekawek.coffeegb.swing.io.serial.ClientEventListener
 import eu.rekawek.coffeegb.swing.io.serial.ServerEventListener
+import eu.rekawek.coffeegb.swing.network.Message
+import eu.rekawek.coffeegb.swing.network.ServerConnection
 import java.awt.event.KeyEvent
 import java.io.File
 import javax.swing.*
@@ -225,7 +227,7 @@ class SwingMenu(
                 startServer.state = false
             }
 
-            override fun onNewConnection(host: String?) {
+            override fun onNewConnection(host: String?, connection: ServerConnection) {
                 connected.state = true
             }
 

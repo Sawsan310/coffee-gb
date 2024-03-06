@@ -1,28 +1,25 @@
-package eu.rekawek.coffeegb.swing.io.serial
+package eu.rekawek.coffeegb.swing.network
 
+import eu.rekawek.coffeegb.swing.io.serial.ClientEventListener
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
 
-class SerialTcpClient(private val host: String, private val serialEndpointWrapper: SerialEndpointWrapper) : Runnable {
+class SerialTcpClient(private val host: String, private val messageHandler: MessageHandler) : Runnable {
     private var clientSocket: Socket? = null
-    private var endpoint: StreamSerialEndpoint? = null
+    private var connection: ClientConnection? = null
     private val listeners = CopyOnWriteArrayList<ClientEventListener>()
 
     override fun run() {
         try {
             clientSocket = Socket(host, SerialTcpServer.PORT)
             LOG.info("Connected to {}", clientSocket!!.inetAddress)
+            connection =
+                ClientConnection(clientSocket!!.getInputStream(), clientSocket!!.getOutputStream(), messageHandler)
             listeners.forEach { it.onConnectedToServer() }
-
-            endpoint = StreamSerialEndpoint(
-                clientSocket!!.getInputStream(),
-                clientSocket!!.getOutputStream()
-            )
-            serialEndpointWrapper.setDelegate(endpoint)
-            endpoint!!.run()
+            connection!!.run()
         } catch (e: IOException) {
             LOG.error("Error in making connection", e)
         }
@@ -30,14 +27,9 @@ class SerialTcpClient(private val host: String, private val serialEndpointWrappe
     }
 
     fun stop() {
-        serialEndpointWrapper.setDelegate(null)
-        if (endpoint != null) {
-            endpoint!!.stop()
-        }
+        connection?.close()
         try {
-            if (clientSocket != null) {
-                clientSocket!!.close()
-            }
+            clientSocket?.close()
         } catch (e: IOException) {
             LOG.error("Error in closing client socket", e)
         }

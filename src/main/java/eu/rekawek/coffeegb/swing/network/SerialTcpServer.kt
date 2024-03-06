@@ -1,5 +1,6 @@
-package eu.rekawek.coffeegb.swing.io.serial
+package eu.rekawek.coffeegb.swing.network
 
+import eu.rekawek.coffeegb.swing.io.serial.ServerEventListener
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -9,15 +10,17 @@ import java.net.SocketTimeoutException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.Volatile
 
-class SerialTcpServer(private val serialEndpointWrapper: SerialEndpointWrapper) : Runnable {
+class SerialTcpServer : Runnable {
     @Volatile
     private var doStop = false
-    private var endpoint: StreamSerialEndpoint? = null
     private val listeners = CopyOnWriteArrayList<ServerEventListener>()
+    private var connection: ServerConnection? = null
+    private var serverSocket: ServerSocket? = null
 
     override fun run() {
         doStop = false
-        ServerSocket(PORT).use { serverSocket ->
+        serverSocket = ServerSocket(PORT)
+        serverSocket?.use { serverSocket ->
             serverSocket.soTimeout = 100
             listeners.forEach { it.onServerStarted() }
             while (!doStop) {
@@ -25,14 +28,10 @@ class SerialTcpServer(private val serialEndpointWrapper: SerialEndpointWrapper) 
                 try {
                     socket = serverSocket.accept()
                     LOG.info("Got new connection: {}", socket.inetAddress)
-                    endpoint = StreamSerialEndpoint(
-                        socket.getInputStream(),
-                        socket.getOutputStream()
-                    )
-                    serialEndpointWrapper.setDelegate(endpoint)
-                    listeners.forEach { it.onNewConnection(socket.inetAddress.hostName) }
-                    endpoint!!.run()
-                    listeners.forEach { it.onConnectionClosed() }
+                    connection = ServerConnection(socket.getInputStream(), socket.getOutputStream()) {
+                        listeners.forEach { it.onConnectionClosed() }
+                    }
+                    listeners.forEach { it.onNewConnection(socket.inetAddress.hostName, connection!!) }
                 } catch (e: SocketTimeoutException) {
                     // do nothing
                 } catch (e: IOException) {
@@ -44,10 +43,14 @@ class SerialTcpServer(private val serialEndpointWrapper: SerialEndpointWrapper) 
     }
 
     fun stop() {
-        serialEndpointWrapper.setDelegate(null)
         doStop = true
-        if (endpoint != null) {
-            endpoint!!.stop()
+        if (connection != null) {
+            connection?.close()
+            connection = null
+        }
+        if (serverSocket != null) {
+            serverSocket?.close()
+            serverSocket = null
         }
     }
 
